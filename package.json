@@ -1,0 +1,18 @@
+{
+  "name": "pocketpistol",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Self-hosted bulk mail for PocketBase, built with PocketPages",
+  "dependencies": {
+    "pocketpages": ">=0.22.5"
+  },
+  "author": {
+    "name": "Ben Allfree",
+    "github": "benallfree"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/benallfree/pocketpistol"
+  },
+  "license": "MIT"
+}
