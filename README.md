@@ -1,33 +1,87 @@
 # Pocketpistol
 
-Self-hosted bulk mail for [PocketBase](https://pocketbase.io), built with [PocketPages](https://pocketpages.dev).
+Drop-in bulk mail for the [PocketBase](https://pocketbase.io) you already run.
 
-- **Admin:** manage subscribers and campaigns from a page inside the PocketBase dashboard (`/_/#/pocketpistol`). Requires PocketBase 0.37+ (admin UI extensions are experimental upstream).
-- **Public pages:** subscribe, unsubscribe, preferences and a campaign archive, rendered by PocketPages.
-- **MCP endpoint:** agents can manage subscribers and campaigns (plus general PocketBase admin, via [pbjsmcp](https://github.com/benallfree/pbjsmcp)) at `POST /mcp` with a superuser token.
-- **Self-contained schema:** Pocketpistol imports its own collections (`subscribers`, `campaigns`, `sends`) on boot. No migration files to copy.
+> Early. Contact sync, the schema and the MCP tools work. Sending, audiences, public unsubscribe pages and the admin screens are still to come.
 
-> Early scaffold. Sending, signed unsubscribe links and the admin screens are still TODO.
+- **Drop-in:** one file in `pb_hooks`. No separate server, no migrations to copy.
+- **Its own collections:** `pp_subscribers`, `pp_campaigns`, `pp_sends`, imported on every boot. They never collide with yours.
+- **Mirrors your users:** describe how your records become contacts, and Pocketpistol keeps them in sync from your own record hooks.
+- **Agent-ready:** ships [pbjsmcp](https://github.com/benallfree/pbjsmcp)-compatible MCP tools for you to add to your own MCP server.
+- **Admin page** inside the PocketBase dashboard (`/_/#/pocketpistol`, PocketBase 0.37+).
 
-## Layout
-
-```
-pb_hooks/
-  pocketpistol.pb.js   boots PocketPages, imports the schema, registers the admin extension
-  lib/                 server-only code (never served)
-  admin/               browser code for the admin extension, served at /_/extensions/pocketpistol/
-  pages/               public PocketPages routes
-```
-
-## Run locally
+## Install
 
 ```bash
-npm i
-pocketbase superuser upsert you@example.com <password> --dir=pb_data
-pocketbase serve --dir=pb_data --dev
+npm i github:benallfree/pocketpistol
+echo "require('pocketpistol')" > pb_hooks/pocketpistol.pb.js
 ```
 
-Then open http://127.0.0.1:8090/_/ and sign in.
+Start PocketBase from the folder that contains `node_modules`. PocketBase resolves package names from its working directory.
+
+## Mirror your users
+
+Create `pb_hooks/pocketpistol.config.js`:
+
+```js
+module.exports = {
+  sources: {
+    users: {
+      collection: 'users',
+      // Return null to leave a record out (an existing contact is removed).
+      contact: (user, app) => ({
+        email: user.email(),
+        name: user.getString('name'),
+        suppressed: !user.verified(), // don't mail this address
+        tags: [`plan:${user.getString('plan')}`],
+        attributes: { username: user.getString('username') }, // merge fields
+      }),
+      // Re-sync the owner when records in other collections change.
+      related: {
+        projects: (project) => project.getString('owner'),
+      },
+    },
+  },
+}
+```
+
+Pocketpistol hooks the after-success create, update and delete events of every collection named there. A sync error is logged and never fails your own save. Restart PocketBase after adding a source. After changing `contact()`, run the `resync_contacts` tool to re-process existing records.
+
+Each contact's `tags`, `attributes` and suppression come from your config. Pocketpistol's own fields (`status`, `local_tags`) are never touched by sync, so an unsubscribe sticks.
+
+## MCP tools
+
+Pocketpistol doesn't add an MCP endpoint. Add its tools to yours:
+
+```js
+// pb_hooks/mcp.pb.js
+routerAdd(
+  'POST',
+  '/mcp',
+  (e) => {
+    const { createMcpServer } = require('pbjsmcp')
+    const { mcpTools } = require('pocketpistol')
+    return createMcpServer({ name: 'myapp', version: '1.0.0', tools: [...mcpTools()] }).handle(e)
+  },
+  $apis.requireSuperuserAuth()
+)
+```
+
+`mcpTools({ groups: ['subscribers', 'campaigns', 'contacts'], readOnly: true })` picks a subset. Every tool requires a superuser on its own, whatever your route allows.
+
+## Contacts from other apps
+
+Apps on another server can push contacts over HTTP (superuser auth):
+
+- `PUT /api/pocketpistol/contacts/{source}/{external_id}` with `{ email, name, tags, attributes, suppressed, updated }`
+- `POST /api/pocketpistol/contacts/batch` with `{ source, contacts: [...] }` (up to 500)
+- `DELETE /api/pocketpistol/contacts/{source}/{external_id}`
+
+## Notes
+
+- `pp_*` collections belong to Pocketpistol. Changes you make to them in the dashboard are reverted on the next boot.
+- If one of your collections already uses a Pocketpistol name, Pocketpistol logs the conflict and disables itself. Your app keeps running.
+- Development happens in [`example/`](example/), a small host app: `cd example && npm i && pocketbase superuser upsert you@example.com <password> && pocketbase serve --dev`.
 
 ## License
 

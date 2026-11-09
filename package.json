@@ -1,12 +1,20 @@
 {
   "name": "pocketpistol",
-  "private": true,
   "version": "0.0.1",
-  "description": "Self-hosted bulk mail for PocketBase, built with PocketPages",
-  "dependencies": {
-    "pbjsmcp": "github:benallfree/pbjsmcp",
-    "pocketpages": ">=0.22.5"
-  },
+  "description": "Drop-in bulk mail for an existing PocketBase",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "lib",
+    "admin"
+  ],
+  "keywords": [
+    "pocketbase",
+    "email",
+    "newsletter",
+    "bulk-mail",
+    "mcp"
+  ],
   "author": {
     "name": "Ben Allfree",
     "github": "benallfree"

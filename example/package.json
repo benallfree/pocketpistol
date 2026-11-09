@@ -1,0 +1,9 @@
+{
+  "name": "pocketpistol-example",
+  "private": true,
+  "description": "A small host app for developing Pocketpistol. Run PocketBase from this folder.",
+  "dependencies": {
+    "pbjsmcp": "github:benallfree/pbjsmcp",
+    "pocketpistol": "file:.."
+  }
+}

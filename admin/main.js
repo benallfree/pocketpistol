@@ -22,8 +22,8 @@ app.routes.superuserOnly('#/pocketpistol', () => {
       .then((r) => r.totalItems)
 
   Promise.all([
-    count('subscribers', 'status = "active"'),
-    count('campaigns', ''),
+    count('pp_subscribers', 'status = "active"'),
+    count('pp_campaigns', ''),
   ])
     .then(([subscribers, campaigns]) => {
       stats.textContent = `${subscribers} active subscribers · ${campaigns} campaigns`
