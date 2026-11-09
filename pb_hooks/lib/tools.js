@@ -10,6 +10,11 @@ const subscriberJson = (r) => ({
   email: r.getString('email'),
   name: r.getString('name'),
   status: r.getString('status'),
+  source: r.getString('source'),
+  external_id: r.getString('external_id'),
+  tags: JSON.parse(r.getString('tags') || '[]') || [],
+  local_tags: JSON.parse(r.getString('local_tags') || '[]') || [],
+  source_suppressed: r.getBool('source_suppressed'),
   created: r.getString('created'),
 })
 
@@ -147,5 +152,64 @@ const tools = [
     },
   },
 ]
+
+// Contact sync tools: same logic as the /api/pocketpistol/contacts routes.
+const contactProperties = {
+  external_id: { type: 'string', description: "The contact's id in the source app" },
+  email: { type: 'string', format: 'email' },
+  name: { type: 'string' },
+  tags: {
+    type: 'array',
+    items: { type: 'string' },
+    description: 'The FULL set of source tags. Replaces the stored tags; omitted tags are removed.',
+  },
+  attributes: { type: 'object', description: 'Merge fields for message bodies. Replaces the stored attributes.' },
+  suppressed: { type: 'boolean', description: 'True if the source says not to mail this address (e.g. unverified).' },
+  updated: {
+    type: 'string',
+    description: "When the source last changed this contact (ISO 8601). Older than what's stored = ignored as stale.",
+  },
+}
+
+tools.push(
+  {
+    name: 'upsert_contacts',
+    description:
+      'Create or update contacts synced from another app (a "source"), keyed by source + external_id. ' +
+      "Replaces each contact's source tags and attributes. Never changes a subscriber's status or local tags, " +
+      'so it never re-subscribes anyone. Returns counts plus per-contact failures.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: 'Source app id, e.g. "pockethost"' },
+        contacts: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 500,
+          items: { type: 'object', properties: contactProperties, required: ['external_id', 'email'] },
+        },
+      },
+      required: ['source', 'contacts'],
+    },
+    handler: ({ args }) => require(`${__hooks}/lib/contacts.js`).upsertContacts(args.source, args.contacts),
+  },
+  {
+    name: 'delete_contact',
+    description: 'Permanently delete a synced contact and their send history.',
+    annotations: { destructiveHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: { source: { type: 'string' }, external_id: { type: 'string' } },
+      required: ['source', 'external_id'],
+    },
+    handler: ({ args }) => require(`${__hooks}/lib/contacts.js`).deleteContact(args.source, args.external_id),
+  },
+  {
+    name: 'list_tags',
+    description: 'Every tag in use with its subscriber count. local=true for tags added in Pocketpistol, false for source tags.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => ({ tags: require(`${__hooks}/lib/contacts.js`).listTags() }),
+  }
+)
 
 module.exports = { tools }

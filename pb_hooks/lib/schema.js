@@ -32,9 +32,23 @@ const collections = [
         values: ['pending', 'active', 'unsubscribed'],
       },
       { id: 'pp_sub_unsub_at', name: 'unsubscribed_at', type: 'date' },
+      // Sync from other apps (lib/contacts.js). A synced subscriber is keyed by
+      // (source, external_id). The source owns `tags`, `attributes`,
+      // `source_suppressed` and `source_updated`; Pocketpistol owns `status`
+      // and `local_tags`, and sync never touches them.
+      { id: 'pp_sub_source', name: 'source', type: 'text', max: 64 },
+      { id: 'pp_sub_ext_id', name: 'external_id', type: 'text', max: 128 },
+      { id: 'pp_sub_tags', name: 'tags', type: 'json' },
+      { id: 'pp_sub_local_tags', name: 'local_tags', type: 'json' },
+      { id: 'pp_sub_attributes', name: 'attributes', type: 'json' },
+      { id: 'pp_sub_src_suppressed', name: 'source_suppressed', type: 'bool' },
+      { id: 'pp_sub_src_updated', name: 'source_updated', type: 'date' },
       ...autodates('pp_sub'),
     ],
-    indexes: ['CREATE UNIQUE INDEX `idx_pp_subscribers_email` ON `subscribers` (`email`)'],
+    indexes: [
+      'CREATE UNIQUE INDEX `idx_pp_subscribers_email` ON `subscribers` (`email`)',
+      "CREATE UNIQUE INDEX `idx_pp_subscribers_source_ext` ON `subscribers` (`source`, `external_id`) WHERE `source` != ''",
+    ],
   },
   {
     id: 'pp_campaigns',

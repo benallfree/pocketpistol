@@ -53,6 +53,57 @@ routerAdd('GET', '/mcp', (e) => {
   return e.json(405, { message: 'Use POST' })
 })
 
+// Contact sync API for other apps (see lib/contacts.js). Superuser auth for
+// now; scoped API tokens later. Errors come back as 400 with a message.
+routerAdd(
+  'PUT',
+  '/api/pocketpistol/contacts/{source}/{externalId}',
+  (e) => {
+    const contacts = require(`${__hooks}/lib/contacts.js`)
+    try {
+      const out = contacts.upsertContact(
+        $app,
+        e.request.pathValue('source'),
+        e.request.pathValue('externalId'),
+        e.requestInfo().body
+      )
+      return e.json(200, out)
+    } catch (err) {
+      return e.json(400, { message: contacts.errorText(err) })
+    }
+  },
+  $apis.requireSuperuserAuth()
+)
+
+routerAdd(
+  'POST',
+  '/api/pocketpistol/contacts/batch',
+  (e) => {
+    const contacts = require(`${__hooks}/lib/contacts.js`)
+    try {
+      const body = e.requestInfo().body
+      return e.json(200, contacts.upsertContacts(body.source, body.contacts))
+    } catch (err) {
+      return e.json(400, { message: contacts.errorText(err) })
+    }
+  },
+  $apis.requireSuperuserAuth()
+)
+
+routerAdd(
+  'DELETE',
+  '/api/pocketpistol/contacts/{source}/{externalId}',
+  (e) => {
+    const contacts = require(`${__hooks}/lib/contacts.js`)
+    try {
+      return e.json(200, contacts.deleteContact(e.request.pathValue('source'), e.request.pathValue('externalId')))
+    } catch (err) {
+      return e.json(400, { message: contacts.errorText(err) })
+    }
+  },
+  $apis.requireSuperuserAuth()
+)
+
 // TODO: cron that drains the send queue
 // cronAdd('pocketpistol-send', '* * * * *', () => {
 //   require(`${__hooks}/lib/mailer.js`).drainQueue()
