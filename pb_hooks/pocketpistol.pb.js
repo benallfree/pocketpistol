@@ -26,6 +26,33 @@ $app.onServe().bindFunc((e) => {
   e.next()
 })
 
+// MCP endpoint (Streamable HTTP, stateless JSON). Agent-first: every feature
+// should be reachable as a tool. Auth: any superuser token, including
+// long-lived static tokens from POST /api/collections/_superusers/impersonate/{id}.
+routerAdd(
+  'POST',
+  '/mcp',
+  (e) => {
+    const { createMcpServer, pocketbaseTools } = require('pbjsmcp')
+    const { tools } = require(`${__hooks}/lib/tools.js`)
+    return createMcpServer({
+      name: 'pocketpistol',
+      version: '0.0.1',
+      instructions:
+        'Pocketpistol is a bulk mail app. Use its tools (get_stats, add_subscribers, create_campaign, ...) for mail work, ' +
+        'and the pb_* tools for general PocketBase admin. Sending is not available yet.',
+      tools: [...tools, ...pocketbaseTools()],
+    }).handle(e)
+  },
+  $apis.requireSuperuserAuth()
+)
+
+// No server-initiated stream: the spec says GET returns 405 in that case.
+routerAdd('GET', '/mcp', (e) => {
+  e.response.header().set('Allow', 'POST')
+  return e.json(405, { message: 'Use POST' })
+})
+
 // TODO: cron that drains the send queue
 // cronAdd('pocketpistol-send', '* * * * *', () => {
 //   require(`${__hooks}/lib/mailer.js`).drainQueue()

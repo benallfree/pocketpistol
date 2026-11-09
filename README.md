@@ -4,6 +4,7 @@ Self-hosted bulk mail for [PocketBase](https://pocketbase.io), built with [Pocke
 
 - **Admin:** manage subscribers and campaigns from a page inside the PocketBase dashboard (`/_/#/pocketpistol`). Requires PocketBase 0.37+ (admin UI extensions are experimental upstream).
 - **Public pages:** subscribe, unsubscribe, preferences and a campaign archive, rendered by PocketPages.
+- **MCP endpoint:** agents can manage subscribers and campaigns (plus general PocketBase admin, via [pbjsmcp](https://github.com/benallfree/pbjsmcp)) at `POST /mcp` with a superuser token.
 - **Self-contained schema:** Pocketpistol imports its own collections (`subscribers`, `campaigns`, `sends`) on boot. No migration files to copy.
 
 > Early scaffold. Sending, signed unsubscribe links and the admin screens are still TODO.

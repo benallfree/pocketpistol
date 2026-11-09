@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "description": "Self-hosted bulk mail for PocketBase, built with PocketPages",
   "dependencies": {
+    "pbjsmcp": "github:benallfree/pbjsmcp",
     "pocketpages": ">=0.22.5"
   },
   "author": {
