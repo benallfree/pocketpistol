@@ -2,7 +2,7 @@
 
 Drop-in bulk mail for the [PocketBase](https://pocketbase.io) you already run.
 
-> Early. Contact sync, the schema and the MCP tools work. Sending, audiences, public unsubscribe pages and the admin screens are still to come.
+> Early. Contact sync, campaigns with tag-based audiences and merge fields, and the MCP tools work. Sending, public unsubscribe pages and the admin screens are still to come.
 
 - **Drop-in:** one file in `pb_hooks`. No separate server, no migrations to copy.
 - **Its own collections:** `pp_subscribers`, `pp_campaigns`, `pp_sends`, imported on every boot. They never collide with yours.
@@ -48,6 +48,15 @@ module.exports = {
 Pocketpistol hooks the after-success create, update and delete events of every collection named there. A sync error is logged and never fails your own save. Restart PocketBase after adding a source. After changing `contact()`, run the `resync_contacts` tool to re-process existing records.
 
 Each contact's `tags`, `attributes` and suppression come from your config. Pocketpistol's own fields (`status`, `local_tags`) are never touched by sync, so an unsubscribe sticks.
+
+## Campaigns
+
+A campaign has a subject, an HTML body, an audience and optional `vars`:
+
+- **Audience:** `{ "all": ["plan:premium"], "any": ["discord", "has-projects"], "none": ["lapsed"] }`, matched against each subscriber's tags (from your config) and local tags. `{}` is everyone. Only active subscribers your source doesn't suppress get mail.
+- **Merge fields:** `{{name}}`, `{{email}}`, `{{attributes.username}}`, `{{vars.total}}`, with a fallback: `{{name | "there"}}`.
+
+The `preview_segment` and `preview_campaign` tools show who a campaign reaches and what one subscriber would receive.
 
 ## MCP tools
 

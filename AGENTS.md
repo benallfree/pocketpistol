@@ -6,7 +6,8 @@ A drop-in extension that adds bulk mail to an existing PocketBase. It runs insid
 
 ```
 index.js         package entry: registers hooks when loaded from a *.pb.js, exports the API
-lib/             server code: schema, contacts, sources (config-driven sync), tools (MCP provider), mailer
+lib/             server code: schema, install (guarded import), contacts, sources (config-driven sync),
+                 segments (audiences), render (merge fields), campaigns, tools (MCP provider), mailer
 admin/           browser code for the admin extension, served at /_/extensions/pocketpistol/
 example/         host app: pb_hooks/{pocketpistol.pb.js, pocketpistol.config.js, mcp.pb.js}, pb_migrations/
 ```
@@ -51,9 +52,15 @@ Every feature must be usable by an agent, not only by a person in the UI. A feat
 - `lib/sources.js` reads the host's `pb_hooks/pocketpistol.config.js` and syncs on after-success record hooks, including `related` collections. `resync()` re-processes a whole source and removes contacts whose record is gone.
 - HTTP routes under `/api/pocketpistol/contacts` serve sources outside the host app.
 
+## Campaigns and audiences
+
+- A campaign's `segment` is `{ all, any, none }` tag lists matched against `tags` and `local_tags` together (`lib/segments.js`, SQL with `json_each`, tags bound as params). `{}` matches everyone. Mailable = `status = 'active'` and not `source_suppressed`; `mailableWhere()` is what sending must use.
+- Merge fields (`lib/render.js`): `{{name}}`, `{{email}}`, `{{attributes.x}}`, `{{vars.x}}`, optional `| "fallback"`. HTML-escaped in bodies, not in subjects. Missing and unknown fields are reported, never fatal.
+- Only drafts can be edited (`lib/campaigns.js`).
+
 ## Not built yet
 
-Sending (queue cron over `pp_sends`, `lib/mailer.js`), tag-based audiences, public pages (unsubscribe, subscribe, preferences, archive) with overridable templates, `suppress()` for bounce handlers, `pp_settings`, real admin screens, scoped API tokens.
+Sending (queue cron over `pp_sends`, `lib/mailer.js`), public pages (unsubscribe, subscribe, preferences, archive) with overridable templates, `suppress()` for bounce handlers, `pp_settings`, real admin screens, scoped API tokens.
 
 ## Plans
 
