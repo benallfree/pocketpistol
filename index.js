@@ -119,10 +119,23 @@ if (!isInHandler) {
     $apis.requireSuperuserAuth()
   )
 
-  // TODO: cron that drains the send queue
-  // cronAdd('pocketpistol-send', '* * * * *', () => {
-  //   require('pocketpistol').mailer.drainQueue()
-  // })
+  // Public unsubscribe page and RFC 8058 one-click endpoint (lib/pages.js).
+  routerAdd('GET', '/pocketpistol/unsubscribe', (e) => require('pocketpistol').pages.handleUnsubscribe(e))
+  routerAdd('POST', '/pocketpistol/unsubscribe', (e) => require('pocketpistol').pages.handleUnsubscribe(e))
+
+  // Send queue: every minute, send up to mail.perMinute queued messages.
+  cronAdd('pocketpistol-send', '* * * * *', () => {
+    const pp = require('pocketpistol')
+    if (pp.disabledReason()) return
+    try {
+      const out = pp.mailer.drainQueue()
+      if (out.sent || out.failed || out.retrying || out.skipped || (out.completed && out.completed.length)) {
+        $app.logger().info('pocketpistol: send run', 'sent', out.sent, 'failed', out.failed, 'retrying', out.retrying, 'skipped', out.skipped, 'completed', (out.completed || []).join(','))
+      }
+    } catch (err) {
+      $app.logger().error('pocketpistol: send run failed', 'error', `${(err && err.message) || err}`)
+    }
+  })
 }
 
 const install = require('./lib/install.js')
@@ -135,4 +148,7 @@ module.exports = {
   contacts: require('./lib/contacts.js'),
   sources: require('./lib/sources.js'),
   mailer: require('./lib/mailer.js'),
+  pages: require('./lib/pages.js'),
+  /** For the host's bounce/complaint handler: stop mailing an address. kind: 'bounce' | 'complaint' | 'unsubscribe'. */
+  suppress: (email, kind, note) => require('./lib/mailer.js').suppress(email, kind, note),
 }

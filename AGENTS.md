@@ -7,9 +7,11 @@ A drop-in extension that adds bulk mail to an existing PocketBase. It runs insid
 ```
 index.js         package entry: registers hooks when loaded from a *.pb.js, exports the API
 lib/             server code: schema, install (guarded import), contacts, sources (config-driven sync),
-                 segments (audiences), render (merge fields), campaigns, tools (MCP provider), mailer
+                 segments (audiences), render (merge fields), campaigns, mailer (queue, sending,
+                 unsubscribe, suppress), pages (public pages), meta (pp_meta state), tools (MCP provider)
+templates/       default public page templates (host overrides in pb_hooks/pocketpistol/templates/)
 admin/           browser code for the admin extension, served at /_/extensions/pocketpistol/
-example/         host app: pb_hooks/{pocketpistol.pb.js, pocketpistol.config.js, mcp.pb.js}, pb_migrations/
+example/         host app: pb_hooks/{pocketpistol.pb.js, pocketpistol.config.js, mcp.pb.js, dev-mail.pb.js}, pb_migrations/
 ```
 
 Run it from `example/`: `npm i`, then `pocketbase superuser upsert test@example.com testpassword123` (always before the first serve of a fresh data dir, or PocketBase opens a browser window for the superuser install page), then `pocketbase serve --dev`. For throwaway test instances, pass the same `--dir` to both commands. `example/node_modules/pocketpistol` is a symlink to the repo root.
@@ -58,9 +60,17 @@ Every feature must be usable by an agent, not only by a person in the UI. A feat
 - Merge fields (`lib/render.js`): `{{name}}`, `{{email}}`, `{{attributes.x}}`, `{{vars.x}}`, optional `| "fallback"`. HTML-escaped in bodies, not in subjects. Missing and unknown fields are reported, never fatal.
 - Only drafts can be edited (`lib/campaigns.js`).
 
+## Sending
+
+- `lib/mailer.js`. `queueCampaign` inserts one `pp_sends` row per mailable subscriber (SQL `INSERT OR IGNORE`, unique per campaign + subscriber) and sets the campaign `sending`. The `pocketpistol-send` cron calls `drainQueue()` every minute: up to `mail.perMinute` rows, each subscriber re-checked before sending, retries up to `mail.maxAttempts`, campaigns marked `sent` when nothing is queued. One run at a time (lock in `$app.store()`).
+- Mail goes through `$app.newMailClient()`, so the host's SMTP settings and sender apply. Links need the host's Application URL.
+- Unsubscribe links are `?s=<subscriber id>&t=<hs256 of it>` with the secret in `pp_meta`. A GET only shows a confirmation (link scanners prefetch GETs); a POST unsubscribes (the form, or an RFC 8058 one-click request).
+- Never send to real addresses while developing. `example/pb_hooks/dev-mail.pb.js` logs every message as a `DEVMAIL {json}` line instead of sending it; tests read those lines.
+- PocketBase restarts itself when a file in `pb_hooks` changes. When a test adds a temporary hook file, wait for the restart before sending requests.
+
 ## Not built yet
 
-Sending (queue cron over `pp_sends`, `lib/mailer.js`), public pages (unsubscribe, subscribe, preferences, archive) with overridable templates, `suppress()` for bounce handlers, `pp_settings`, real admin screens, scoped API tokens.
+Public subscribe, preferences and archive pages; `pp_settings`; real admin screens; scoped API tokens; retry backoff (failed deliveries are retried on every run).
 
 ## Plans
 

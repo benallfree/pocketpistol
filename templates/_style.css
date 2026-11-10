@@ -1,0 +1,11 @@
+body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; background: #fafafa; margin: 0; }
+main { max-width: 32rem; margin: 4rem auto; padding: 2rem; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; }
+h1 { font-size: 1.4rem; margin: 0 0 1rem; }
+button { font: inherit; padding: 0.6rem 1.2rem; border: 0; border-radius: 6px; background: #1a1a1a; color: #fff; cursor: pointer; }
+.muted { color: #666; font-size: 0.9rem; }
+@media (prefers-color-scheme: dark) {
+  body { background: #111; color: #eee; }
+  main { background: #1b1b1b; border-color: #333; }
+  button { background: #eee; color: #111; }
+  .muted { color: #999; }
+}

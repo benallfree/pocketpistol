@@ -6,7 +6,8 @@
   "files": [
     "index.js",
     "lib",
-    "admin"
+    "admin",
+    "templates"
   ],
   "keywords": [
     "pocketbase",

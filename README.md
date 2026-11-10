@@ -2,7 +2,7 @@
 
 Drop-in bulk mail for the [PocketBase](https://pocketbase.io) you already run.
 
-> Early. Contact sync, campaigns with tag-based audiences and merge fields, and the MCP tools work. Sending, public unsubscribe pages and the admin screens are still to come.
+> Early. Contact sync, campaigns with tag-based audiences, sending and unsubscribe work. Subscribe and preference pages, settings and the admin screens are still to come.
 
 - **Drop-in:** one file in `pb_hooks`. No separate server, no migrations to copy.
 - **Its own collections:** `pp_subscribers`, `pp_campaigns`, `pp_sends`, imported on every boot. They never collide with yours.
@@ -58,6 +58,31 @@ A campaign has a subject, an HTML body, an audience and optional `vars`:
 
 The `preview_segment` and `preview_campaign` tools show who a campaign reaches and what one subscriber would receive.
 
+## Sending
+
+Mail goes through your PocketBase mail settings (SMTP and sender). Set the **Application URL** in PocketBase settings: unsubscribe links need it.
+
+- `send_test_email` sends a campaign to a few test addresses, marked `[TEST]`. No subscriber gets it.
+- `send_campaign` (with `confirm: true`) queues one message per mailable subscriber. A cron sends them, 60 per minute by default. Each subscriber is re-checked before sending, so an unsubscribe or bounce after queueing still counts. Failed deliveries are retried, up to 3 attempts.
+- `cancel_sending` stops a campaign that's still going out.
+
+Every message gets a signed unsubscribe link (a footer, unless the body uses `{{unsubscribe_url}}`) and one-click `List-Unsubscribe` headers (RFC 8058). The link opens `/pocketpistol/unsubscribe`, which asks for confirmation; mail clients' one-click requests unsubscribe directly. Override the page templates by putting files with the same names as the package's `templates/` in `pb_hooks/pocketpistol/templates/`.
+
+Optional settings in `pocketpistol.config.js`:
+
+```js
+module.exports = {
+  mail: { from: { address: 'news@example.com', name: 'Example News' }, perMinute: 60, maxAttempts: 3 },
+  sources: { /* ... */ },
+}
+```
+
+Bounces and complaints: call `suppress()` from your own bounce handler.
+
+```js
+require('pocketpistol').suppress(email, 'bounce', 'SES permanent bounce') // or 'complaint', 'unsubscribe'
+```
+
 ## MCP tools
 
 Pocketpistol doesn't add an MCP endpoint. Add its tools to yours:
@@ -76,7 +101,7 @@ routerAdd(
 )
 ```
 
-`mcpTools({ groups: ['subscribers', 'campaigns', 'contacts'], readOnly: true })` picks a subset. Every tool requires a superuser on its own, whatever your route allows.
+`mcpTools({ groups: ['subscribers', 'campaigns', 'sending', 'contacts'], readOnly: true })` picks a subset. Every tool requires a superuser on its own, whatever your route allows.
 
 ## Contacts from other apps
 
@@ -90,7 +115,7 @@ Apps on another server can push contacts over HTTP (superuser auth):
 
 - `pp_*` collections belong to Pocketpistol. Changes you make to them in the dashboard are reverted on the next boot.
 - If one of your collections already uses a Pocketpistol name, Pocketpistol logs the conflict and disables itself. Your app keeps running.
-- Development happens in [`example/`](example/), a small host app: `cd example && npm i && pocketbase superuser upsert you@example.com <password> && pocketbase serve --dev`.
+- Development happens in [`example/`](example/), a small host app that logs outgoing mail instead of sending it: `cd example && npm i && pocketbase superuser upsert you@example.com <password> && pocketbase serve --dev`.
 
 ## License
 
